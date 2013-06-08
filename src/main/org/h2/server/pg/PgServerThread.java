@@ -25,6 +25,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Properties;
@@ -551,8 +552,8 @@ public class PgServerThread implements Runnable {
             for (int i = 0; i < columns; i++) {
                 String name = meta.getColumnName(i + 1);
                 names[i] = name;
-                int type = meta.getColumnType(i + 1);
-                type = PgServer.convertType(type);
+                int jType = meta.getColumnType(i + 1);
+                int pgType = PgServer.convertType(jType);
                 // the ODBC client needs the column pg_catalog.pg_index
                 // to be of type 'int2vector'
                 // if (name.equalsIgnoreCase("indkey") &&
@@ -560,8 +561,10 @@ public class PgServerThread implements Runnable {
                 //     type = PgServer.PG_TYPE_INT2VECTOR;
                 // }
                 precision[i] = meta.getColumnDisplaySize(i + 1);
-                server.checkType(type);
-                types[i] = type;
+                if (jType!=Types.NULL) {
+                    server.checkType(pgType);
+                }
+                types[i] = pgType;
             }
             startMessage('T');
             writeShort(columns);
