@@ -19,6 +19,7 @@ import java.sql.Types;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import org.h2.constant.ErrorCode;
 import org.h2.engine.Constants;
 import org.h2.message.DbException;
 import org.h2.server.Service;
@@ -82,6 +83,7 @@ public class PgServer implements Service {
     private boolean allowOthers;
     private boolean isDaemon;
     private boolean ifExists;
+    private String key, keyDatabase;
 
     @Override
     public void init(String... args) {
@@ -101,6 +103,9 @@ public class PgServer implements Service {
                 isDaemon = true;
             } else if (Tool.isOption(a, "-ifExists")) {
                 ifExists = true;
+            } else if (Tool.isOption(a, "-key")) {
+                key = args[++i];
+                keyDatabase = args[++i];
             }
         }
         org.h2.Driver.load();
@@ -509,6 +514,25 @@ public class PgServer implements Service {
         if (!typeSet.contains(type)) {
             trace("Unsupported type: " + type);
         }
+    }
+
+    /**
+     * If no key is set, return the original database name. If a key is set,
+     * check if the key matches. If yes, return the correct database name. If
+     * not, throw an exception.
+     *
+     * @param db the key to test (or database name if no key is used)
+     * @return the database name
+     * @throws DbException if a key is set but doesn't match
+     */
+    public String checkKeyAndGetDatabaseName(String db) {
+        if (key == null) {
+            return db;
+        }
+        if (key.equals(db)) {
+            return keyDatabase;
+        }
+        throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
     }
 
     @Override
