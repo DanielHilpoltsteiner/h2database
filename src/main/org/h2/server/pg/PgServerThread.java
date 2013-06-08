@@ -332,8 +332,7 @@ public class PgServerThread implements Runnable {
                 if (result) {
                     try {
                         ResultSet rs = prep.getResultSet();
-                        ResultSetMetaData meta = rs.getMetaData();
-                        sendRowDescription(meta);
+                        // the meta-data is sent in the prior 'Describe'
                         while (rs.next()) {
                             sendDataRow(rs);
                         }
