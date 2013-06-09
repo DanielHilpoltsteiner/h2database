@@ -16,6 +16,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.concurrent.*;
 
 import org.h2.test.TestBase;
 import org.h2.tools.Server;
@@ -35,9 +36,10 @@ public class TestPgServer extends TestBase {
     }
 
     @Override
-    public void test() throws SQLException {
+    public void test() throws Exception {
         testPGAdapter();
         testKeyAlias();
+        testCancelQuery();
     }
 
     private void testPGAdapter() throws SQLException {
@@ -55,7 +57,6 @@ public class TestPgServer extends TestBase {
         } finally {
             server.stop();
         }
-        deleteDb("test");
     }
 
     private void testPgClient() throws SQLException {
@@ -239,6 +240,50 @@ public class TestPgServer extends TestBase {
             println("PostgreSQL JDBC driver not found - PgServer not tested");
         } finally {
             server.stop();
+        }
+    }
+
+    private void testCancelQuery() throws Exception {
+        Server server = Server.createPgServer("-pgPort", "5535", "-pgDaemon", "-key", "test", "mem:test");
+        server.start();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Class.forName("org.postgresql.Driver");
+
+            Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5535/test", "sa", "sa");
+            final Statement stat = conn.createStatement();
+            stat.execute("create alias sleep for \"java.lang.Thread.sleep\"");
+
+            // create a table with 200 rows (cancel interval is 127)
+            stat.execute("create table test(id int)");
+            for (int i=0; i<200; i++) {
+                stat.execute("insert into test (id) values (rand())");
+            }
+
+            Future<Boolean> future = executor.submit(new Callable<Boolean>() {
+                public Boolean call() throws Exception {
+                    return stat.execute("select id, sleep(5) from test");
+                }
+            });
+
+            // give it a little time to start and then cancel it
+            Thread.sleep(100);
+            stat.cancel();
+
+            try {
+                future.get();
+                throw new IllegalStateException();
+            } catch (ExecutionException e) {
+                assertStartsWith(e.getCause().getMessage(), "ERROR: canceling statement");
+            } finally {
+                conn.close();
+            }
+        } catch (ClassNotFoundException e) {
+            println("PostgreSQL JDBC driver not found - PgServer not tested");
+        } finally {
+            server.stop();
+            executor.shutdown();
         }
     }
 }
