@@ -485,13 +485,21 @@ public class PgServerThread implements Runnable {
 
     private void writeDataColumn(ResultSet rs, int column, int pgType) throws Exception {
         if (formatAsText(pgType)) {
-            String s = rs.getString(column);
-            if (s==null) {
-                writeInt(-1);
-            } else {
-                byte[] data = s.getBytes(getEncoding());
-                writeInt(data.length);
-                write(data);
+            // plain text
+            switch (pgType) {
+            case PG_TYPE_BOOL:
+                writeInt(1);
+                dataOut.writeByte(rs.getBoolean(column) ? 't' : 'f');
+                break;
+            default:
+                String s = rs.getString(column);
+                if (s==null) {
+                    writeInt(-1);
+                } else {
+                    byte[] data = s.getBytes(getEncoding());
+                    writeInt(data.length);
+                    write(data);
+                }
             }
         } else {
             // binary
@@ -697,6 +705,8 @@ public class PgServerThread implements Runnable {
 
     private static int getTypeSize(int pgType, int precision) {
         switch (pgType) {
+        case PG_TYPE_BOOL:
+            return 5;
         case PG_TYPE_VARCHAR:
             return Math.max(255, precision + 10);
         default:
