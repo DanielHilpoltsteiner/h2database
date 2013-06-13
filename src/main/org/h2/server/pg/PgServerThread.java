@@ -153,10 +153,10 @@ public class PgServerThread implements Runnable {
                 int pid = readInt();
                 int key = readInt();
                 PgServerThread c = server.getThread(pid);
-                if (c!=null) {
-                    c.cancelRequest(key);
+                if (c!=null && key == c.secret) {
+                    c.cancelRequest();
                 } else {
-                    sendErrorResponse("unknown process: "+pid);
+                    server.trace("Invalid CancelRequest: pid="+pid+", key="+key);
                 }
                 close();
             } else if (version == 80877103) {
@@ -941,20 +941,18 @@ public class PgServerThread implements Runnable {
 
     /**
      * Kill a currently running query on this thread.
-     * @param secret the private key of the command
      * @return true if the command was successfully killed
      */
-    synchronized boolean cancelRequest(int secret) throws IOException {
+    synchronized boolean cancelRequest() throws IOException {
         if (activeRequest != null)
         {
-            if (secret != this.secret) throw new IOException("invalid cancel secret");
             try {
                 activeRequest.cancel();
                 activeRequest = null;
+                return true;
             } catch (SQLException e) {
                 throw DbException.convert(e);
             }
-            return true;
         }
         return false;
     }
