@@ -2244,12 +2244,20 @@ public class Parser {
         }
         case Function.SUBSTRING: {
             function.setParameter(0, readExpression());
-            if (!readIf(",")) {
-                read("FROM");
-            }
-            function.setParameter(1, readExpression());
-            if (readIf("FOR") || readIf(",")) {
-                function.setParameter(2, readExpression());
+            if (readIf(",")) {
+                function.setParameter(1, readExpression());
+                if (readIf(",")) {
+                    function.setParameter(2, readExpression());
+                }
+            } else {
+                if (readIf("FROM")) {
+                    function.setParameter(1, readExpression());
+                } else {
+                    function.setParameter(1, ValueExpression.get(ValueInt.get(1)));
+                }
+                if (readIf("FOR")) {
+                    function.setParameter(2, readExpression());
+                }
             }
             read(")");
             break;
