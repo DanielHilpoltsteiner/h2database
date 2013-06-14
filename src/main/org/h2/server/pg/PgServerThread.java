@@ -541,7 +541,9 @@ public class PgServerThread implements Runnable {
 
     private void readParameter(PreparedStatement prep, int pgType, int i, int formatCode) throws SQLException, IOException {
         int paramLen = readInt();
-        if (formatCode==0) {
+        if (paramLen==-1) {
+            prep.setNull(i, Types.NULL);
+        } else if (formatCode==0) {
             // plain text
             byte[] data = DataUtils.newBytes(paramLen);
             readFully(data);
