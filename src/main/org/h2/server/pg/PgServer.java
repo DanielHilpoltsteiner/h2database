@@ -459,8 +459,29 @@ public class PgServer implements Service {
     /**
      * A fake wrapper around pg_get_expr(expr_text, relation_oid), in PG it decompiles the "internal form of an
      * expression, assuming that any Vars in it refer to the relation indicated by the second parameter".
+     *
+     * This method is called by the database.
      */
     public static String getPgExpr(String exprText, int relationOid) {
+        return null;
+    }
+
+    /**
+     * Check if the current session has access to this table.
+     * This method is called by the database.
+     *
+     * @param pgType the postgres type oid
+     * @param typeMod the type modifier (typically -1)
+     * @return A string name for the given type
+     */
+    public static String formatType(Connection conn, int pgType, int typeMod) throws SQLException {
+        PreparedStatement prep = conn.prepareStatement("select typname from pg_catalog.pg_type where oid = ? and typtypmod = ?");
+        prep.setInt(1, pgType);
+        prep.setInt(2, typeMod);
+        ResultSet rs = prep.executeQuery();
+        if (rs.next()) {
+            return rs.getString(1);
+        }
         return null;
     }
 
