@@ -838,6 +838,11 @@ public class Parser {
         } else if (readIf("DEFAULT_TRANSACTION_ISOLATION")) {
             // for PostgreSQL compatibility
             buff.append("'read committed' AS DEFAULT_TRANSACTION_ISOLATION FROM DUAL");
+        } else if (readIf("TRANSACTION")) {
+            // for PostgreSQL compatibility
+            read("ISOLATION");
+            read("LEVEL");
+            buff.append("'read committed' AS TRANSACTION_ISOLATION FROM DUAL");
         } else if (readIf("DATESTYLE")) {
             // for PostgreSQL compatibility
             buff.append("'ISO' AS DATESTYLE FROM DUAL");
@@ -2238,13 +2243,27 @@ public class Parser {
             break;
         }
         case Function.SUBSTRING: {
+            // Different variants include:
+            // SUBSTRING(X,1)
+            // SUBSTRING(X,1,1)
+            // SUBSTRING(X FROM 1 FOR 1) -- Postgres
+            // SUBSTRING(X FROM 1) -- Postgres
+            // SUBSTRING(X FOR 1) -- Postgres
             function.setParameter(0, readExpression());
-            if (!readIf(",")) {
-                read("FROM");
-            }
-            function.setParameter(1, readExpression());
-            if (readIf("FOR") || readIf(",")) {
+            if (readIf("FROM")) {
+                function.setParameter(1, readExpression());
+                if (readIf("FOR")) {
+                    function.setParameter(2, readExpression());
+                }
+            } else if (readIf("FOR")) {
+                function.setParameter(1, ValueExpression.get(ValueInt.get(0)));
                 function.setParameter(2, readExpression());
+            } else {
+                read(",");
+                function.setParameter(1, readExpression());
+                if (readIf(",")) {
+                    function.setParameter(2, readExpression());
+                }
             }
             read(")");
             break;
@@ -5330,6 +5349,13 @@ public class Parser {
                         }
                     }
                 } while (readIfMore());
+            }
+        }
+        // Allows "COMMENT='comment'" in DDL statements (MySQL syntax)
+        if (readIf("COMMENT")) {
+            if (readIf("=")) {
+                // read the complete string comment, but nothing with it for now
+                readString();
             }
         }
         if (readIf("ENGINE")) {
