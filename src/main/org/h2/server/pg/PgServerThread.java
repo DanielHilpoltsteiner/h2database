@@ -45,8 +45,6 @@ import org.h2.util.StringUtils;
 import org.h2.util.Utils;
 import org.h2.value.CaseInsensitiveMap;
 
-import static org.h2.server.pg.PgServer.*;
-
 /**
  * One server thread is opened for each client.
  */
@@ -259,16 +257,6 @@ public class PgServerThread implements Runnable {
             for (int i = 0; i < formatCodeCount; i++) {
                 formatCodes[i] = readShort();
             }
-<<<<<<< HEAD
-            try {
-                int paramCount = readShort();
-                for (int i = 0; i < paramCount; i++) {
-                    readParameter(prep.prep, prep.paramType[i], i + 1, (i < formatCodes.length) ? formatCodes[i] : 0);
-                }
-            } catch (Exception e) {
-                sendErrorResponse(e);
-                break;
-=======
             int paramCount = readShort();
             try {
                 for (int i = 0; i < paramCount; i++) {
@@ -277,7 +265,6 @@ public class PgServerThread implements Runnable {
             } catch (Exception e) {
                 sendErrorResponse(e);
                 break switchBlock;
->>>>>>> official
             }
             int resultCodeCount = readShort();
             portal.resultColumnFormat = new int[resultCodeCount];
@@ -489,20 +476,28 @@ public class PgServerThread implements Runnable {
         startMessage('D');
         writeShort(columns);
         for (int i = 1; i <= columns; i++) {
-            writeDataColumn(rs, i, convertType(metaData.getColumnType(i)));
+            writeDataColumn(rs, i, PgServer.convertType(metaData.getColumnType(i)));
         }
         sendMessage();
     }
 
     private void writeDataColumn(ResultSet rs, int column, int pgType) throws Exception {
         if (formatAsText(pgType)) {
-            String s = rs.getString(column);
-            if (s==null) {
-                writeInt(-1);
-            } else {
-                byte[] data = s.getBytes(getEncoding());
-                writeInt(data.length);
-                write(data);
+            // plain text
+            switch (pgType) {
+            case PgServer.PG_TYPE_BOOL:
+                writeInt(1);
+                dataOut.writeByte(rs.getBoolean(column) ? 't' : 'f');
+                break;
+            default:
+                String s = rs.getString(column);
+                if (s==null) {
+                    writeInt(-1);
+                } else {
+                    byte[] data = s.getBytes(getEncoding());
+                    writeInt(data.length);
+                    write(data);
+                }
             }
         } else {
             // binary
@@ -539,109 +534,16 @@ public class PgServerThread implements Runnable {
 
             default: throw new IllegalStateException("output binary format is undefined");
             }
->>>>>>> official
         }
     }
 
-    private void writeDataColumn(ResultSet rs, int column, int pgType) throws Exception {
-        if (formatAsText(pgType)) {
-            // plain text
-            switch (pgType) {
-            case PG_TYPE_BOOL:
-                writeInt(1);
-                dataOut.writeByte(rs.getBoolean(column) ? 't' : 'f');
-                break;
-            default:
-                String s = rs.getString(column);
-                if (s==null) {
-                    writeInt(-1);
-                } else {
-                    byte[] data = s.getBytes(getEncoding());
-                    writeInt(data.length);
-                    write(data);
-                }
-            }
-        } else {
-            // binary
-            switch (pgType) {
-            case PG_TYPE_INT2:
-                writeInt(2);
-                dataOut.writeShort(rs.getShort(column));
-                break;
-            case PG_TYPE_INT4:
-                writeInt(4);
-                dataOut.writeInt(rs.getInt(column));
-                break;
-            case PG_TYPE_INT8:
-                writeInt(8);
-                dataOut.writeLong(rs.getLong(column));
-                break;
-            case PG_TYPE_FLOAT4:
-                writeInt(4);
-                dataOut.writeFloat(rs.getFloat(column));
-                break;
-            case PG_TYPE_FLOAT8:
-                writeInt(8);
-                dataOut.writeDouble(rs.getDouble(column));
-                break;
-            case PG_TYPE_BYTEA:
-                byte[] data = rs.getBytes(column);
-                if (data==null) {
-                    writeInt(-1);
-                } else {
-                    writeInt(data.length);
-                    write(data);
-                }
-                break;
-
-            default: throw new IllegalStateException("output binary format is undefined");
-            }
-        }
-    }
-
-<<<<<<< HEAD
-    private void readParameter(PreparedStatement prep, int pgType, int i, int formatCode) throws SQLException, IOException {
-        int paramLen = readInt();
-        if (paramLen==-1) {
-            prep.setNull(i, Types.NULL);
-        } else if (formatCode==0) {
-            // plain text
-            byte[] data = DataUtils.newBytes(paramLen);
-            readFully(data);
-            prep.setString(i, new String(data, getEncoding()));
-        } else {
-            // binary
-            switch (pgType) {
-            case PG_TYPE_INT2:
-                assert paramLen==2;
-                prep.setShort(i, dataIn.readShort());
-                break;
-            case PG_TYPE_INT4:
-                assert paramLen==4;
-                prep.setInt(i, dataIn.readInt());
-                break;
-            case PG_TYPE_INT8:
-                assert paramLen==8;
-                prep.setLong(i, dataIn.readLong());
-                break;
-            case PG_TYPE_FLOAT4:
-                assert paramLen==4;
-                prep.setFloat(i, dataIn.readFloat());
-                break;
-            case PG_TYPE_FLOAT8:
-                assert paramLen==8;
-                prep.setDouble(i, dataIn.readDouble());
-                break;
-            case PG_TYPE_BYTEA:
-                byte[] d1 = DataUtils.newBytes(paramLen);
-                readFully(d1);
-                prep.setBytes(i, d1);
-=======
     private void setParameter(PreparedStatement prep, int pgType, int i, int[] formatCodes) throws SQLException, IOException {
         boolean text = (i >= formatCodes.length) || (formatCodes[i] == 0);
         int col = i + 1;
         int paramLen = readInt();
-        if (text) {
+        if (paramLen==-1) {
+            prep.setNull(i, Types.NULL);
+        } else if (text) {
             // plain text
             byte[] data = DataUtils.newBytes(paramLen);
             readFully(data);
@@ -683,13 +585,11 @@ public class PgServerThread implements Runnable {
                 byte[] d1 = DataUtils.newBytes(paramLen);
                 readFully(d1);
                 prep.setBytes(col, d1);
->>>>>>> official
                 break;
             default:
                 server.trace("Binary format for type: "+pgType+" is unsupported");
                 byte[] d2 = DataUtils.newBytes(paramLen);
                 readFully(d2);
-<<<<<<< HEAD
                 prep.setString(i, new String(d2, getEncoding()));
             }
         }
@@ -700,11 +600,6 @@ public class PgServerThread implements Runnable {
             return "UTF-8";
         }
         return clientEncoding;
-=======
-                prep.setString(col, new String(d2, getEncoding()));
-            }
-        }
->>>>>>> official
     }
 
     private void sendErrorResponse(Exception re) throws IOException {
@@ -748,7 +643,7 @@ public class PgServerThread implements Runnable {
                 if (p.paramType != null && p.paramType[i] != 0) {
                     type = p.paramType[i];
                 } else {
-                    type = PG_TYPE_VARCHAR;
+                    type = PgServer.PG_TYPE_VARCHAR;
                 }
                 server.checkType(type);
                 writeInt(type);
@@ -776,7 +671,7 @@ public class PgServerThread implements Runnable {
                 String name = meta.getColumnName(i + 1);
                 names[i] = name;
                 int jType = meta.getColumnType(i + 1);
-                int pgType = convertType(jType);
+                int pgType = PgServer.convertType(jType);
                 // the ODBC client needs the column pg_catalog.pg_index
                 // to be of type 'int2vector'
                 // if (name.equalsIgnoreCase("indkey") &&
@@ -814,11 +709,7 @@ public class PgServerThread implements Runnable {
     private boolean formatAsText(int pgType) {
         switch (pgType) {
         // TODO: add more types to send as binary once compatibility is confirmed
-<<<<<<< HEAD
-        case PG_TYPE_BYTEA:
-=======
         case PgServer.PG_TYPE_BYTEA:
->>>>>>> official
             return false;
         }
         return true;
@@ -826,9 +717,9 @@ public class PgServerThread implements Runnable {
 
     private static int getTypeSize(int pgType, int precision) {
         switch (pgType) {
-        case PG_TYPE_BOOL:
+        case PgServer.PG_TYPE_BOOL:
             return 5;
-        case PG_TYPE_VARCHAR:
+        case PgServer.PG_TYPE_VARCHAR:
             return Math.max(255, precision + 10);
         default:
             return precision + 4;
@@ -1056,48 +947,22 @@ public class PgServerThread implements Runnable {
         return this.processId;
     }
 
-<<<<<<< HEAD
-    synchronized void setActiveRequest(JdbcStatement statement) {
-=======
     private synchronized void setActiveRequest(JdbcStatement statement) {
->>>>>>> official
         activeRequest = statement;
     }
 
     /**
      * Kill a currently running query on this thread.
-<<<<<<< HEAD
-     * @return true if the command was successfully killed
      */
-    synchronized boolean cancelRequest() throws IOException {
-        if (activeRequest != null)
-        {
+    private synchronized void cancelRequest() throws IOException {
+        if (activeRequest != null) {
             try {
                 activeRequest.cancel();
                 activeRequest = null;
-                return true;
-=======
-     * @param secret the private key of the command
-     */
-    private synchronized void cancelRequest(int secret) throws IOException {
-        if (activeRequest != null)
-        {
-            if (secret != this.secret) {
-                sendErrorResponse("invalid cancel secret");
-                return;
-            }
-            try {
-                activeRequest.cancel();
-                activeRequest = null;
->>>>>>> official
             } catch (SQLException e) {
                 throw DbException.convert(e);
             }
         }
-<<<<<<< HEAD
-        return false;
-=======
->>>>>>> official
     }
 
     /**
