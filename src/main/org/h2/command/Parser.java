@@ -2243,19 +2243,25 @@ public class Parser {
             break;
         }
         case Function.SUBSTRING: {
+            // Different variants include:
+            // SUBSTRING(X,1)
+            // SUBSTRING(X,1,1)
+            // SUBSTRING(X FROM 1 FOR 1) -- Postgres
+            // SUBSTRING(X FROM 1) -- Postgres
+            // SUBSTRING(X FOR 1) -- Postgres
             function.setParameter(0, readExpression());
-            if (readIf(",")) {
+            if (readIf("FROM")) {
                 function.setParameter(1, readExpression());
-                if (readIf(",")) {
+                if (readIf("FOR")) {
                     function.setParameter(2, readExpression());
                 }
+            } else if (readIf("FOR")) {
+                function.setParameter(1, ValueExpression.get(ValueInt.get(0)));
+                function.setParameter(2, readExpression());
             } else {
-                if (readIf("FROM")) {
-                    function.setParameter(1, readExpression());
-                } else {
-                    function.setParameter(1, ValueExpression.get(ValueInt.get(1)));
-                }
-                if (readIf("FOR")) {
+                read(",");
+                function.setParameter(1, readExpression());
+                if (readIf(",")) {
                     function.setParameter(2, readExpression());
                 }
             }
@@ -5343,6 +5349,13 @@ public class Parser {
                         }
                     }
                 } while (readIfMore());
+            }
+        }
+        // Allows "COMMENT='comment'" in DDL statements (MySQL syntax)
+        if (readIf("COMMENT")) {
+            if (readIf("=")) {
+                // read the complete string comment, but nothing with it for now
+                readString();
             }
         }
         if (readIf("ENGINE")) {
