@@ -670,8 +670,8 @@ public class PgServerThread implements Runnable {
             for (int i = 0; i < columns; i++) {
                 String name = meta.getColumnName(i + 1);
                 names[i] = name;
-                int jType = meta.getColumnType(i + 1);
-                int pgType = PgServer.convertType(jType);
+                int type = meta.getColumnType(i + 1);
+                int pgType = PgServer.convertType(type);
                 // the ODBC client needs the column pg_catalog.pg_index
                 // to be of type 'int2vector'
                 // if (name.equalsIgnoreCase("indkey") &&
@@ -679,7 +679,7 @@ public class PgServerThread implements Runnable {
                 //     type = PgServer.PG_TYPE_INT2VECTOR;
                 // }
                 precision[i] = meta.getColumnDisplaySize(i + 1);
-                if (jType!=Types.NULL) {
+                if (type!=Types.NULL) {
                     server.checkType(pgType);
                 }
                 types[i] = pgType;
@@ -718,7 +718,7 @@ public class PgServerThread implements Runnable {
     private static int getTypeSize(int pgType, int precision) {
         switch (pgType) {
         case PgServer.PG_TYPE_BOOL:
-            return 5;
+            return 1;
         case PgServer.PG_TYPE_VARCHAR:
             return Math.max(255, precision + 10);
         default:
