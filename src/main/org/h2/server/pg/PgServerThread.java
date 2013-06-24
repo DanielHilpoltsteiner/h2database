@@ -590,7 +590,7 @@ public class PgServerThread implements Runnable {
                 server.trace("Binary format for type: "+pgType+" is unsupported");
                 byte[] d2 = DataUtils.newBytes(paramLen);
                 readFully(d2);
-                prep.setString(i, new String(d2, getEncoding()));
+                prep.setString(col, new String(d2, getEncoding()));
             }
         }
     }
