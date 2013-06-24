@@ -151,10 +151,10 @@ public class PgServerThread implements Runnable {
                 int pid = readInt();
                 int key = readInt();
                 PgServerThread c = server.getThread(pid);
-                if (c!=null && key == c.secret) {
-                    c.cancelRequest();
+                if (c!=null) {
+                    c.cancelRequest(key);
                 } else {
-                    server.trace("Invalid CancelRequest: pid="+pid+", key="+key);
+                    sendErrorResponse("unknown process: "+pid);
                 }
                 close();
             } else if (version == 80877103) {
@@ -537,6 +537,13 @@ public class PgServerThread implements Runnable {
         }
     }
 
+    private String getEncoding() {
+        if ("UNICODE".equals(clientEncoding)) {
+            return "UTF-8";
+        }
+        return clientEncoding;
+    }
+
     private void setParameter(PreparedStatement prep, int pgType, int i, int[] formatCodes) throws SQLException, IOException {
         boolean text = (i >= formatCodes.length) || (formatCodes[i] == 0);
         int col = i + 1;
@@ -593,13 +600,6 @@ public class PgServerThread implements Runnable {
                 prep.setString(col, new String(d2, getEncoding()));
             }
         }
-    }
-
-    private String getEncoding() {
-        if ("UNICODE".equals(clientEncoding)) {
-            return "UTF-8";
-        }
-        return clientEncoding;
     }
 
     private void sendErrorResponse(Exception re) throws IOException {
@@ -953,9 +953,15 @@ public class PgServerThread implements Runnable {
 
     /**
      * Kill a currently running query on this thread.
+     * @param secret the private key of the command
      */
-    private synchronized void cancelRequest() throws IOException {
-        if (activeRequest != null) {
+    private synchronized void cancelRequest(int secret) throws IOException {
+        if (activeRequest != null)
+        {
+            if (secret != this.secret) {
+                sendErrorResponse("invalid cancel secret");
+                return;
+            }
             try {
                 activeRequest.cancel();
                 activeRequest = null;

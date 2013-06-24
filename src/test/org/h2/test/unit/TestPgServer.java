@@ -27,11 +27,9 @@ public class TestPgServer extends TestBase {
     }
 
     @Override
-    public void test() throws Exception {
+    public void test() throws SQLException {
         testPGAdapter();
         testKeyAlias();
-        testCancelQuery();
-        testBinaryTypes();
     }
 
     private void testPGAdapter() throws SQLException {
@@ -93,6 +91,7 @@ public class TestPgServer extends TestBase {
             server.stop();
             executor.shutdown();
         }
+        deleteDb("test");
     }
 
     private void testPgClient() throws SQLException {
