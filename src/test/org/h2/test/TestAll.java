@@ -63,6 +63,7 @@ import org.h2.test.db.TestSequence;
 import org.h2.test.db.TestSessionsLocks;
 import org.h2.test.db.TestShow;
 import org.h2.test.db.TestSpaceReuse;
+import org.h2.test.db.TestSpatial;
 import org.h2.test.db.TestSpeed;
 import org.h2.test.db.TestTableEngines;
 import org.h2.test.db.TestTempTables;
@@ -106,16 +107,16 @@ import org.h2.test.mvcc.TestMvcc3;
 import org.h2.test.mvcc.TestMvccMultiThreaded;
 import org.h2.test.rowlock.TestRowLocks;
 import org.h2.test.server.TestAutoServer;
+import org.h2.test.server.TestInit;
 import org.h2.test.server.TestNestedLoop;
 import org.h2.test.server.TestWeb;
-import org.h2.test.server.TestInit;
 import org.h2.test.store.TestCacheConcurrentLIRS;
 import org.h2.test.store.TestCacheLIRS;
 import org.h2.test.store.TestCacheLongKeyLIRS;
 import org.h2.test.store.TestConcurrent;
 import org.h2.test.store.TestDataUtils;
-import org.h2.test.store.TestMVStore;
 import org.h2.test.store.TestMVRTree;
+import org.h2.test.store.TestMVStore;
 import org.h2.test.store.TestMVTableEngine;
 import org.h2.test.store.TestObjectDataType;
 import org.h2.test.store.TestSpinLock;
@@ -159,12 +160,10 @@ import org.h2.test.unit.TestFtp;
 import org.h2.test.unit.TestIntArray;
 import org.h2.test.unit.TestIntIntHashMap;
 import org.h2.test.unit.TestJmx;
-import org.h2.test.unit.TestModifyOnWrite;
-import org.h2.test.unit.TestObjectDeserialization;
-import org.h2.test.unit.TestSort;
-import org.h2.test.unit.TestTraceSystem;
 import org.h2.test.unit.TestMathUtils;
+import org.h2.test.unit.TestModifyOnWrite;
 import org.h2.test.unit.TestNetUtils;
+import org.h2.test.unit.TestObjectDeserialization;
 import org.h2.test.unit.TestOldVersion;
 import org.h2.test.unit.TestOverflow;
 import org.h2.test.unit.TestPageStore;
@@ -178,10 +177,12 @@ import org.h2.test.unit.TestSampleApps;
 import org.h2.test.unit.TestScriptReader;
 import org.h2.test.unit.TestSecurity;
 import org.h2.test.unit.TestShell;
+import org.h2.test.unit.TestSort;
 import org.h2.test.unit.TestStreams;
 import org.h2.test.unit.TestStringCache;
 import org.h2.test.unit.TestStringUtils;
 import org.h2.test.unit.TestTools;
+import org.h2.test.unit.TestTraceSystem;
 import org.h2.test.unit.TestUtils;
 import org.h2.test.unit.TestValue;
 import org.h2.test.unit.TestValueHashMap;
@@ -191,8 +192,8 @@ import org.h2.test.utils.SelfDestructor;
 import org.h2.tools.DeleteDbFiles;
 import org.h2.tools.Server;
 import org.h2.util.Profiler;
-import org.h2.util.Utils;
 import org.h2.util.StringUtils;
+import org.h2.util.Utils;
 
 /**
  * The main test application. JUnit is not used because loops are easier to
@@ -498,8 +499,8 @@ kill -9 `jps -l | grep "org.h2.test." | cut -d " " -f 1`
      */
     private void runTests() throws SQLException {
 
-        int test;
-//        mvStore = true;
+        {}
+        mvStore = false;
 
         smallLog = big = networked = memory = ssl = false;
         diskResult = traceSystemOut = diskUndo = false;
@@ -589,9 +590,7 @@ kill -9 `jps -l | grep "org.h2.test." | cut -d " " -f 1`
         new TestDeadlock().runTest(this);
         new TestEncryptedDb().runTest(this);
         new TestExclusive().runTest(this);
-        if (!mvStore) {
-            new TestFullText().runTest(this);
-        }
+        new TestFullText().runTest(this);
         new TestFunctionOverload().runTest(this);
         new TestFunctions().runTest(this);
         new TestInit().runTest(this);
@@ -607,15 +606,14 @@ kill -9 `jps -l | grep "org.h2.test." | cut -d " " -f 1`
         new TestMultiThreadedKernel().runTest(this);
         new TestOpenClose().runTest(this);
         new TestOptimizations().runTest(this);
-        if (!mvStore) {
-            new TestOutOfMemory().runTest(this);
-        }
+        new TestOutOfMemory().runTest(this);
         new TestPowerOff().runTest(this);
         new TestQueryCache().runTest(this);
         new TestReadOnly().runTest(this);
         new TestRecursiveQueries().runTest(this);
         new TestRights().runTest(this);
         if (!mvStore) {
+            // Recover is not yet implemented
             new TestRunscript().runTest(this);
         }
         new TestSQLInjection().runTest(this);
@@ -624,12 +622,14 @@ kill -9 `jps -l | grep "org.h2.test." | cut -d " " -f 1`
         new TestSequence().runTest(this);
         new TestShow().runTest(this);
         new TestSpaceReuse().runTest(this);
+        new TestSpatial().runTest(this);
         new TestSpeed().runTest(this);
         new TestTableEngines().runTest(this);
         new TestTempTables().runTest(this);
+        new TestTransaction().runTest(this);
+        new TestTriggersConstraints().runTest(this);
         if (!mvStore) {
-            new TestTransaction().runTest(this);
-            new TestTriggersConstraints().runTest(this);
+            // Two-Phase commit is not yet implemented
             new TestTwoPhaseCommit().runTest(this);
         }
         new TestView().runTest(this);
@@ -668,9 +668,10 @@ kill -9 `jps -l | grep "org.h2.test." | cut -d " " -f 1`
         new TestDataSource().runTest(this);
         new TestXA().runTest(this);
         if (!mvStore) {
+            // Two-Phase commit is not yet implemented
             new TestXASimple().runTest(this);
         }
-        
+
         // server
         new TestAutoServer().runTest(this);
         new TestNestedLoop().runTest(this);
@@ -680,11 +681,9 @@ kill -9 `jps -l | grep "org.h2.test." | cut -d " " -f 1`
         new TestMvcc1().runTest(this);
         new TestMvcc2().runTest(this);
         new TestMvcc3().runTest(this);
-        if (!mvStore) {
-            new TestMvccMultiThreaded().runTest(this);
-            new TestRowLocks().runTest(this);
-        }
-        
+        new TestMvccMultiThreaded().runTest(this);
+        new TestRowLocks().runTest(this);
+
         // synth
         new TestBtreeIndex().runTest(this);
         new TestDiskFull().runTest(this);
@@ -720,6 +719,7 @@ kill -9 `jps -l | grep "org.h2.test." | cut -d " " -f 1`
         // unit
         new TestAutoReconnect().runTest(this);
         if (!mvStore) {
+            // Caching is different; cache size not yet implemented
             new TestCache().runTest(this);
         }
         new TestClearReferences().runTest(this);
@@ -746,14 +746,13 @@ kill -9 `jps -l | grep "org.h2.test." | cut -d " " -f 1`
         new TestObjectDeserialization().runTest(this);
         new TestMultiThreadedKernel().runTest(this);
         new TestOverflow().runTest(this);
-        if (!mvStore) {
-            new TestPageStore().runTest(this);
-        }
+        new TestPageStore().runTest(this);
         new TestPageStoreCoverage().runTest(this);
         new TestPattern().runTest(this);
         new TestPgServer().runTest(this);
         new TestReader().runTest(this);
         if (!mvStore) {
+            // Recover is not yet implemented
             new TestRecovery().runTest(this);
         }
         new TestSampleApps().runTest(this);
@@ -766,6 +765,7 @@ kill -9 `jps -l | grep "org.h2.test." | cut -d " " -f 1`
         new TestStringCache().runTest(this);
         new TestStringUtils().runTest(this);
         if (!mvStore) {
+            // Recover is not yet implemented
             new TestTools().runTest(this);
         }
         new TestTraceSystem().runTest(this);
@@ -774,19 +774,6 @@ kill -9 `jps -l | grep "org.h2.test." | cut -d " " -f 1`
         new TestValue().runTest(this);
         new TestValueHashMap().runTest(this);
         new TestValueMemory().runTest(this);
-    }
-    
-    
-    public static byte[] serialize(Object obj) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        ObjectOutputStream os = new ObjectOutputStream(out);
-        os.writeObject(obj);
-        return out.toByteArray();
-    }
-    public static Object deserialize(byte[] data) throws IOException, ClassNotFoundException {
-        ByteArrayInputStream in = new ByteArrayInputStream(data);
-        ObjectInputStream is = new ObjectInputStream(in);
-        return is.readObject();
     }
 
     private void runTest(String className) {

@@ -110,8 +110,7 @@ merge into pg_catalog.pg_type values(
 
 create domain regproc as varchar_ignorecase;
 
--- (oid, relname, relnamespace, relkind, relam, reltuples, reltablespace, relpages, relhasindex, relhasrules, relhasoids, relchecks, reltriggers)
-create view pg_catalog.pg_class
+create view pg_catalog.pg_class -- (oid, relname, relnamespace, relkind, relam, reltuples, reltablespace, relpages, relhasindex, relhasrules, relhasoids, relchecks, reltriggers)
 as
 select
     id oid,
